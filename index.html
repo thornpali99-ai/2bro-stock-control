@@ -942,7 +942,7 @@ window.openConfig = function() {
 function setStatus(state) {
   const dot = document.getElementById('fbDot');
   const txt = document.getElementById('fbStatusText');
-  if (state === 'connected')   { dot.className='dot connected'; txt.textContent='Firebase connected'; }
+  if (state === 'connected')   { dot.className='dot connected'; txt.textContent='OK'; }
   else if (state === 'error')  { dot.className='dot error';     txt.textContent='Connection error';   }
   else if (state === 'demo')   { dot.className='dot connected'; txt.textContent='Demo mode';          }
   else                         { dot.className='dot';           txt.textContent='Connecting…';        }
