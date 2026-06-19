@@ -6,7 +6,7 @@
 <title>Stock Control Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Khmer:wght@400;500;600&display=swap');
 
   :root {
     --bg:        #0d1117;
@@ -31,6 +31,55 @@
     color: var(--text);
     font-family: var(--font);
     min-height: 100vh;
+  }
+  body.lang-km { font-family: 'Noto Sans Khmer', var(--font); }
+
+  /* ── LANGUAGE TOGGLE ── */
+  .lang-toggle {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .lang-btn.active { background: var(--accent); color: #fff; }
+  .lang-btn:not(.active):hover { color: var(--text); }
+  .lang-toggle-lg .lang-btn { padding: 8px 16px; font-size: 12px; }
+
+  /* ── SETTINGS MODAL ── */
+  .settings-modal { width: 460px; position: relative; max-height: 86vh; overflow-y: auto; }
+  .modal-close-x {
+    position: absolute; top: 18px; right: 18px;
+    background: transparent; border: none;
+    color: var(--muted); font-size: 15px;
+    cursor: pointer; line-height: 1;
+    padding: 4px;
+  }
+  .modal-close-x:hover { color: var(--text); }
+  .settings-section {
+    border-top: 1px solid var(--border);
+    margin-top: 18px;
+    padding-top: 18px;
+  }
+  .settings-section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+  .settings-section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 12px;
   }
 
   /* ── TOP BAR ── */
@@ -343,7 +392,7 @@
   .low-stock-banner i { color: var(--red); }
 
   /* ── LOGIN MODAL ── */
-  .login-modal { width: 360px; text-align: center; }
+  .login-modal { width: 360px; text-align: center; position: relative; }
   .login-modal .login-icon {
     width: 52px; height: 52px;
     border-radius: 12px;
@@ -372,52 +421,79 @@
 <!-- LOGIN MODAL -->
 <div class="modal-backdrop" id="loginModal">
   <div class="modal login-modal">
+    <div class="lang-toggle" style="position:absolute; top:18px; right:18px;">
+      <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" data-lang="km" onclick="setLang('km')">ខ្មែរ</button>
+    </div>
     <div class="login-icon"><i class="fa-solid fa-lock"></i></div>
-    <h2>2BRO</h2>
-    <p>Sign in to access the stock control dashboard.</p>
+    <h2 data-i18n="login.title">StockOS Login</h2>
+    <p data-i18n="login.subtitle">Sign in to access the stock control dashboard.</p>
     <form id="loginForm" onsubmit="return doLogin(event)">
       <div class="form-group">
-        <label>ID</label>
-        <input type="text" id="login-id" placeholder="Enter ID" autocomplete="username">
+        <label data-i18n="login.idLabel">ID</label>
+        <input type="text" id="login-id" data-i18n-placeholder="login.idPlaceholder" placeholder="Enter ID" autocomplete="username">
       </div>
       <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password">
+        <label data-i18n="login.passLabel">Password</label>
+        <input type="password" id="login-pass" data-i18n-placeholder="login.passPlaceholder" placeholder="Enter password" autocomplete="current-password">
       </div>
       <div class="login-error" id="loginError"></div>
-      <button type="submit" class="btn btn-primary">Login</button>
+      <button type="submit" class="btn btn-primary" data-i18n="login.button">Login</button>
     </form>
   </div>
 </div>
 
-<!-- FIREBASE CONFIG MODAL -->
-<div class="modal-backdrop hidden" id="configModal">
-  <div class="modal">
-    <h2>🔥 Firebase Configuration</h2>
-    <p>Enter your Firebase project credentials to connect the dashboard.</p>
-    <div class="form-group">
-      <label>API Key</label>
-      <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+<!-- SETTINGS MODAL (language + firebase + account) -->
+<div class="modal-backdrop hidden" id="settingsModal">
+  <div class="modal settings-modal">
+    <button class="modal-close-x" onclick="closeSettings()" aria-label="Close">✕</button>
+    <h2 data-i18n="settings.title">⚙ Settings</h2>
+    <p data-i18n="settings.subtitle">Manage your language, Firebase connection, and account.</p>
+
+    <!-- LANGUAGE -->
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settings.language">Language</div>
+      <div class="lang-toggle lang-toggle-lg">
+        <button class="lang-btn" data-lang="en" onclick="setLang('en')">English</button>
+        <button class="lang-btn" data-lang="km" onclick="setLang('km')">ខ្មែរ</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Auth Domain</label>
-      <input type="text" id="cfg-authDomain" placeholder="your-project.firebaseapp.com">
+
+    <!-- FIREBASE -->
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settings.firebase">Firebase Connection</div>
+      <div class="form-group">
+        <label data-i18n="config.apiKey">API Key</label>
+        <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+      </div>
+      <div class="form-group">
+        <label data-i18n="config.authDomain">Auth Domain</label>
+        <input type="text" id="cfg-authDomain" placeholder="your-project.firebaseapp.com">
+      </div>
+      <div class="form-group">
+        <label data-i18n="config.databaseURL">Database URL</label>
+        <input type="text" id="cfg-databaseURL" placeholder="https://your-project-default-rtdb.firebaseio.com">
+      </div>
+      <div class="form-group">
+        <label data-i18n="config.projectId">Project ID</label>
+        <input type="text" id="cfg-projectId" placeholder="your-project-id">
+      </div>
+      <div class="form-group">
+        <label data-i18n="config.appId">App ID</label>
+        <input type="text" id="cfg-appId" placeholder="1:123456:web:abc123">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-i18n="config.demoBtn" onclick="loadDemo()">Demo Mode (no Firebase)</button>
+        <button class="btn btn-primary" data-i18n="config.connectBtn" onclick="connectFirebase()">Connect</button>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Database URL</label>
-      <input type="text" id="cfg-databaseURL" placeholder="https://your-project-default-rtdb.firebaseio.com">
-    </div>
-    <div class="form-group">
-      <label>Project ID</label>
-      <input type="text" id="cfg-projectId" placeholder="your-project-id">
-    </div>
-    <div class="form-group">
-      <label>App ID</label>
-      <input type="text" id="cfg-appId" placeholder="1:123456:web:abc123">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="loadDemo()">Demo Mode (no Firebase)</button>
-      <button class="btn btn-primary" onclick="connectFirebase()">Connect</button>
+
+    <!-- ACCOUNT -->
+    <div class="settings-section">
+      <div class="settings-section-title" data-i18n="settings.account">Account</div>
+      <button class="btn btn-danger" style="width:100%" onclick="doLogout()">
+        <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="header.logout">Logout</span>
+      </button>
     </div>
   </div>
 </div>
@@ -425,39 +501,39 @@
 <!-- ADD / EDIT ITEM MODAL -->
 <div class="modal-backdrop hidden" id="editModal">
   <div class="modal edit-modal">
-    <h2 id="editModalTitle">Add Item</h2>
-    <p>Fill in the stock details for this item.</p>
+    <h2 id="editModalTitle" data-i18n="edit.addTitle">Add Item</h2>
+    <p data-i18n="edit.subtitle">Fill in the stock details for this item.</p>
     <div class="form-group">
-      <label>Item Name (Khmer / English)</label>
+      <label data-i18n="edit.nameLabel">Item Name (Khmer / English)</label>
       <input type="text" id="f-name" placeholder="e.g. ខោទឹកនោមស្លៀក UniDry S24">
     </div>
     <div class="form-group">
-      <label>Size / SKU</label>
+      <label data-i18n="edit.skuLabel">Size / SKU</label>
       <input type="text" id="f-sku" placeholder="e.g. S24, M60, XL18">
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Beginning Stock</label>
+        <label data-i18n="edit.beginLabel">Beginning Stock</label>
         <input type="number" id="f-begin" min="0" value="0">
       </div>
       <div class="form-group">
-        <label>Transfer to Truck</label>
+        <label data-i18n="edit.transferLabel">Transfer to Truck</label>
         <input type="number" id="f-transfer" min="0" value="0">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Sold</label>
+        <label data-i18n="edit.soldLabel">Sold</label>
         <input type="number" id="f-sold" min="0" value="0">
       </div>
       <div class="form-group">
-        <label>Low Stock Threshold</label>
+        <label data-i18n="edit.thresholdLabel">Low Stock Threshold</label>
         <input type="number" id="f-threshold" min="0" value="20">
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveItem()">Save</button>
+      <button class="btn btn-ghost" data-i18n="edit.cancelBtn" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" data-i18n="edit.saveBtn" onclick="saveItem()">Save</button>
     </div>
   </div>
 </div>
@@ -467,14 +543,13 @@
 
 <!-- HEADER -->
 <header>
-  <div class="logo">2BRO<span>Wholesale</span></div>
+  <div class="logo">STOCK<span>OS</span></div>
   <div class="header-right">
     <div class="firebase-status" id="fbStatus">
       <span class="dot" id="fbDot"></span>
       <span id="fbStatusText">Connecting…</span>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="openConfig()">⚙ Firebase</button>
-    <button class="btn btn-ghost btn-sm" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    <button class="btn btn-ghost btn-sm" onclick="openSettings()"><i class="fa-solid fa-gear"></i> <span data-i18n="settings.btn">Settings</span></button>
   </div>
 </header>
 
@@ -483,7 +558,7 @@
 
   <div class="date-bar">
     <div>
-      <div class="section-title">Daily Stock Report</div>
+      <div class="section-title" data-i18n="main.sectionTitle">Daily Stock Report</div>
       <div style="font-size:14px;color:var(--muted);font-family:var(--mono)" id="dateDisplay"></div>
     </div>
     <input type="date" id="reportDate" onchange="changeDate(this.value)">
@@ -498,37 +573,37 @@
   <!-- STATS -->
   <div class="stats-row">
     <div class="stat-card">
-      <div class="stat-label">Total SKUs</div>
+      <div class="stat-label" data-i18n="stat.skus">Total SKUs</div>
       <div class="stat-value accent" id="statSkus">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total Beginning</div>
+      <div class="stat-label" data-i18n="stat.begin">Total Beginning</div>
       <div class="stat-value" id="statBegin">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total Sold</div>
+      <div class="stat-label" data-i18n="stat.sold">Total Sold</div>
       <div class="stat-value red" id="statSold">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Warehouse Stock</div>
+      <div class="stat-label" data-i18n="stat.warehouse">Warehouse Stock</div>
       <div class="stat-value blue" id="statWarehouse">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Truck Stock</div>
+      <div class="stat-label" data-i18n="stat.truck">Truck Stock</div>
       <div class="stat-value" id="statTruck">—</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Final Stock</div>
+      <div class="stat-label" data-i18n="stat.final">Final Stock</div>
       <div class="stat-value green" id="statFinal">—</div>
     </div>
   </div>
 
   <!-- TOOLBAR -->
   <div class="toolbar">
-    <input type="text" id="searchInput" placeholder="🔍  Search items…" oninput="renderTable()">
+    <input type="text" id="searchInput" data-i18n-placeholder="toolbar.search" placeholder="🔍  Search items…" oninput="renderTable()">
     <div class="toolbar-spacer"></div>
-    <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
-    <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ Add Item</button>
+    <button class="btn btn-ghost btn-sm" data-i18n="toolbar.export" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn btn-primary btn-sm" data-i18n="toolbar.add" onclick="openAddModal()">＋ Add Item</button>
   </div>
 
   <!-- TABLE -->
@@ -537,20 +612,20 @@
       <thead>
         <tr>
           <th onclick="sortBy('no')">#</th>
-          <th onclick="sortBy('name')">Item</th>
+          <th onclick="sortBy('name')" data-i18n="th.item">Item</th>
           <th onclick="sortBy('sku')">SKU</th>
-          <th onclick="sortBy('begin')" class="num">Begin</th>
-          <th onclick="sortBy('transfer')" class="num">→ Truck</th>
-          <th onclick="sortBy('sold')" class="num">Sold</th>
-          <th onclick="sortBy('warehouse')" class="num">Warehouse</th>
-          <th onclick="sortBy('truck')" class="num">Truck</th>
-          <th onclick="sortBy('final')" class="num">Final</th>
-          <th>Status</th>
+          <th onclick="sortBy('begin')" class="num" data-i18n="th.begin">Begin</th>
+          <th onclick="sortBy('transfer')" class="num" data-i18n="th.transfer">→ Truck</th>
+          <th onclick="sortBy('sold')" class="num" data-i18n="th.sold">Sold</th>
+          <th onclick="sortBy('warehouse')" class="num" data-i18n="th.warehouse">Warehouse</th>
+          <th onclick="sortBy('truck')" class="num" data-i18n="th.truck">Truck</th>
+          <th onclick="sortBy('final')" class="num" data-i18n="th.final">Final</th>
+          <th data-i18n="th.status">Status</th>
           <th></th>
         </tr>
       </thead>
       <tbody id="tableBody">
-        <tr><td colspan="11"><div class="empty-state"><i class="fa-solid fa-warehouse"></i><br>Connect Firebase or load demo data</div></td></tr>
+        <tr><td colspan="11"><div class="empty-state"><i class="fa-solid fa-warehouse"></i><br><span data-i18n="table.connectPrompt">Connect Firebase or load demo data</span></div></td></tr>
       </tbody>
     </table>
   </div>
@@ -578,9 +653,220 @@ let demoMode = false;
 
 // ── AUTH ───────────────────────────────────────────────────────────────
 // Change these to set your own login ID / password.
-const AUTH_ID   = '2bro';
-const AUTH_PASS = 'x112233';
+const AUTH_ID   = 'admin';
+const AUTH_PASS = 'stockos2026';
 const AUTH_KEY  = 'stockos_logged_in';
+
+// ── I18N ───────────────────────────────────────────────────────────────
+let lang = localStorage.getItem('stockos_lang') || 'en';
+let lastFbState = 'connecting';
+
+const I18N = {
+  en: {
+    'login.title': 'StockOS Login',
+    'login.subtitle': 'Sign in to access the stock control dashboard.',
+    'login.idLabel': 'ID',
+    'login.idPlaceholder': 'Enter ID',
+    'login.passLabel': 'Password',
+    'login.passPlaceholder': 'Enter password',
+    'login.button': 'Login',
+    'login.error': 'Invalid ID or password.',
+    'login.logoutConfirm': 'Log out of StockOS?',
+    'header.logout': 'Logout',
+    'settings.btn': 'Settings',
+    'settings.title': '⚙ Settings',
+    'settings.subtitle': 'Manage your language, Firebase connection, and account.',
+    'settings.language': 'Language',
+    'settings.firebase': 'Firebase Connection',
+    'settings.account': 'Account',
+    'status.connecting': 'Connecting…',
+    'status.connected': 'Firebase connected',
+    'status.error': 'Connection error',
+    'status.demo': 'Demo mode',
+    'config.title': '🔥 Firebase Configuration',
+    'config.subtitle': 'Enter your Firebase project credentials to connect the dashboard.',
+    'config.apiKey': 'API Key',
+    'config.authDomain': 'Auth Domain',
+    'config.databaseURL': 'Database URL',
+    'config.projectId': 'Project ID',
+    'config.appId': 'App ID',
+    'config.demoBtn': 'Demo Mode (no Firebase)',
+    'config.connectBtn': 'Connect',
+    'config.fillRequired': 'Fill in API Key and Database URL',
+    'config.firebaseError': 'Firebase error: ',
+    'config.readError': 'Firebase read error: ',
+    'edit.addTitle': 'Add Item',
+    'edit.editTitle': 'Edit Item',
+    'edit.subtitle': 'Fill in the stock details for this item.',
+    'edit.nameLabel': 'Item Name (Khmer / English)',
+    'edit.skuLabel': 'Size / SKU',
+    'edit.beginLabel': 'Beginning Stock',
+    'edit.transferLabel': 'Transfer to Truck',
+    'edit.soldLabel': 'Sold',
+    'edit.thresholdLabel': 'Low Stock Threshold',
+    'edit.cancelBtn': 'Cancel',
+    'edit.saveBtn': 'Save',
+    'edit.nameRequired': 'Item name is required',
+    'edit.updated': 'Item updated',
+    'edit.added': 'Item added',
+    'edit.saveFailed': 'Save failed: ',
+    'edit.deleteConfirm': 'Delete this item?',
+    'edit.deleted': 'Item deleted',
+    'edit.deleteFailed': 'Delete failed: ',
+    'edit.notConnected': 'Not connected to Firebase',
+    'main.sectionTitle': 'Daily Stock Report',
+    'stat.skus': 'Total SKUs',
+    'stat.begin': 'Total Beginning',
+    'stat.sold': 'Total Sold',
+    'stat.warehouse': 'Warehouse Stock',
+    'stat.truck': 'Truck Stock',
+    'stat.final': 'Final Stock',
+    'toolbar.search': '🔍  Search items…',
+    'toolbar.export': '⬇ Export CSV',
+    'toolbar.add': '＋ Add Item',
+    'th.item': 'Item',
+    'th.begin': 'Begin',
+    'th.transfer': '→ Truck',
+    'th.sold': 'Sold',
+    'th.warehouse': 'Warehouse',
+    'th.truck': 'Truck',
+    'th.final': 'Final',
+    'th.status': 'Status',
+    'table.edit': 'Edit',
+    'table.empty': 'No items found',
+    'table.connectPrompt': 'Connect Firebase or load demo data',
+    'badge.out': 'OUT',
+    'badge.low': 'LOW',
+    'badge.ok': 'OK',
+    'banner.outOfStock': 'item(s) out of stock',
+    'banner.runningLow': 'item(s) running low',
+    'toast.csvExported': 'CSV exported',
+    'toast.nothingToExport': 'Nothing to export',
+    'csv.no': 'No', 'csv.item': 'Item', 'csv.sku': 'SKU', 'csv.beginning': 'Beginning',
+    'csv.transfer': 'Transfer to Truck', 'csv.sold': 'Sold', 'csv.warehouse': 'Warehouse',
+    'csv.truck': 'Truck', 'csv.final': 'Final',
+  },
+  km: {
+    'login.title': 'ចូលប្រើ StockOS',
+    'login.subtitle': 'ចូលប្រើដើម្បីប្រើផ្ទាំងគ្រប់គ្រងស្តុក។',
+    'login.idLabel': 'លេខសម្គាល់',
+    'login.idPlaceholder': 'បញ្ចូលលេខសម្គាល់',
+    'login.passLabel': 'ពាក្យសម្ងាត់',
+    'login.passPlaceholder': 'បញ្ចូលពាក្យសម្ងាត់',
+    'login.button': 'ចូលប្រើ',
+    'login.error': 'លេខសម្គាល់ ឬ ពាក្យសម្ងាត់មិនត្រឹមត្រូវ។',
+    'login.logoutConfirm': 'ចេញពី StockOS?',
+    'header.logout': 'ចេញ',
+    'settings.btn': 'ការកំណត់',
+    'settings.title': '⚙ ការកំណត់',
+    'settings.subtitle': 'គ្រប់គ្រងភាសា ការភ្ជាប់ Firebase និងគណនីរបស់អ្នក។',
+    'settings.language': 'ភាសា',
+    'settings.firebase': 'ការភ្ជាប់ Firebase',
+    'settings.account': 'គណនី',
+    'status.connecting': 'កំពុងភ្ជាប់…',
+    'status.connected': 'បានភ្ជាប់ Firebase',
+    'status.error': 'កំហុសក្នុងការភ្ជាប់',
+    'status.demo': 'ម៉ូដសាកល្បង',
+    'config.title': '🔥 ការកំណត់ Firebase',
+    'config.subtitle': 'បញ្ចូលព័ត៌មានគម្រោង Firebase របស់អ្នកដើម្បីភ្ជាប់ផ្ទាំងគ្រប់គ្រង។',
+    'config.apiKey': 'API Key',
+    'config.authDomain': 'Auth Domain',
+    'config.databaseURL': 'Database URL',
+    'config.projectId': 'Project ID',
+    'config.appId': 'App ID',
+    'config.demoBtn': 'ម៉ូដសាកល្បង (មិនប្រើ Firebase)',
+    'config.connectBtn': 'ភ្ជាប់',
+    'config.fillRequired': 'សូមបញ្ចូល API Key និង Database URL',
+    'config.firebaseError': 'កំហុស Firebase៖ ',
+    'config.readError': 'កំហុសក្នុងការទាញទិន្នន័យ Firebase៖ ',
+    'edit.addTitle': 'បញ្ចូលទំនិញ',
+    'edit.editTitle': 'កែទំនិញ',
+    'edit.subtitle': 'បំពេញព័ត៌មានស្តុកសម្រាប់ទំនិញនេះ។',
+    'edit.nameLabel': 'ឈ្មោះទំនិញ (ខ្មែរ / អង់គ្លេស)',
+    'edit.skuLabel': 'ទំហំ / SKU',
+    'edit.beginLabel': 'ស្តុកដើមគ្រា',
+    'edit.transferLabel': 'ផ្ទេរទៅឡាន',
+    'edit.soldLabel': 'បានលក់',
+    'edit.thresholdLabel': 'កម្រិតស្តុកទាប',
+    'edit.cancelBtn': 'បោះបង់',
+    'edit.saveBtn': 'រក្សាទុក',
+    'edit.nameRequired': 'ត្រូវការឈ្មោះទំនិញ',
+    'edit.updated': 'បានកែទំនិញ',
+    'edit.added': 'បានបញ្ចូលទំនិញ',
+    'edit.saveFailed': 'រក្សាទុកមិនជោគជ័យ៖ ',
+    'edit.deleteConfirm': 'លុបទំនិញនេះមែនទេ?',
+    'edit.deleted': 'បានលុបទំនិញ',
+    'edit.deleteFailed': 'លុបមិនជោគជ័យ៖ ',
+    'edit.notConnected': 'មិនទាន់ភ្ជាប់ទៅ Firebase',
+    'main.sectionTitle': 'របាយការណ៍ស្តុកប្រចាំថ្ងៃ',
+    'stat.skus': 'ចំនួន SKU សរុប',
+    'stat.begin': 'ស្តុកដើមគ្រាសរុប',
+    'stat.sold': 'បានលក់សរុប',
+    'stat.warehouse': 'ស្តុកនៅឃ្លាំង',
+    'stat.truck': 'ស្តុកនៅឡាន',
+    'stat.final': 'ស្តុកចុងក្រោយ',
+    'toolbar.search': '🔍  ស្វែងរកទំនិញ…',
+    'toolbar.export': '⬇ នាំចេញ CSV',
+    'toolbar.add': '＋ បញ្ចូលទំនិញ',
+    'th.item': 'ទំនិញ',
+    'th.begin': 'ដើមគ្រា',
+    'th.transfer': '→ ឡាន',
+    'th.sold': 'បានលក់',
+    'th.warehouse': 'ឃ្លាំង',
+    'th.truck': 'ឡាន',
+    'th.final': 'ចុងក្រោយ',
+    'th.status': 'ស្ថានភាព',
+    'table.edit': 'កែ',
+    'table.empty': 'មិនមានទំនិញ',
+    'table.connectPrompt': 'ភ្ជាប់ Firebase ឬផ្ទុកទិន្នន័យសាកល្បង',
+    'badge.out': 'អស់ស្តុក',
+    'badge.low': 'ស្តុកទាប',
+    'badge.ok': 'គ្រប់គ្រាន់',
+    'banner.outOfStock': 'ប្រភេទអស់ស្តុក',
+    'banner.runningLow': 'ប្រភេទស្តុកទាប',
+    'toast.csvExported': 'បាននាំចេញ CSV',
+    'toast.nothingToExport': 'មិនមានទិន្នន័យសម្រាប់នាំចេញ',
+    'csv.no': 'លេខ', 'csv.item': 'ទំនិញ', 'csv.sku': 'SKU', 'csv.beginning': 'ដើមគ្រា',
+    'csv.transfer': 'ផ្ទេរទៅឡាន', 'csv.sold': 'បានលក់', 'csv.warehouse': 'ឃ្លាំង',
+    'csv.truck': 'ឡាន', 'csv.final': 'ចុងក្រោយ',
+  }
+};
+
+function t(key) {
+  return (I18N[lang] && I18N[lang][key]) || (I18N.en[key] || key);
+}
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.body.classList.toggle('lang-km', lang === 'km');
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+  });
+
+  // Refresh dynamic content that isn't covered by data-i18n
+  setStatus(lastFbState);
+  if (document.getElementById('dateDisplay')) {
+    document.getElementById('dateDisplay').textContent = formatDate(currentDate);
+  }
+  if (editingKey !== undefined) {
+    document.getElementById('editModalTitle').textContent = editingKey ? t('edit.editTitle') : t('edit.addTitle');
+  }
+  if (typeof renderTable === 'function' && window.renderTable) renderTable();
+  if (typeof renderLowBanner === 'function') renderLowBanner();
+}
+
+window.setLang = function(l) {
+  lang = l;
+  localStorage.setItem('stockos_lang', l);
+  applyI18n();
+};
 
 function todayStr() {
   return new Date().toISOString().slice(0,10);
@@ -618,13 +904,13 @@ window.doLogin = function(e) {
     document.getElementById('login-pass').value = '';
     showApp();
   } else {
-    errEl.textContent = 'Invalid ID or password.';
+    errEl.textContent = t('login.error');
   }
   return false;
 };
 
 window.doLogout = function() {
-  if (!confirm('Log out of StockOS?')) return;
+  if (!confirm(t('login.logoutConfirm'))) return;
   localStorage.removeItem(AUTH_KEY);
   location.reload();
 };
@@ -645,34 +931,35 @@ function initApp() {
       return;
     } catch(e) {}
   }
-  document.getElementById('configModal').classList.remove('hidden');
+  document.getElementById('settingsModal').classList.remove('hidden');
 }
 
+applyI18n();
 checkAuth();
 
 // ── FIREBASE ───────────────────────────────────────────────────────────
 window.connectFirebase = function() {
   const cfg = readConfig();
   if (!cfg.apiKey || !cfg.databaseURL) {
-    showToast('Fill in API Key and Database URL', 'error');
+    showToast(t('config.fillRequired'), 'error');
     return;
   }
   try {
     const app = initializeApp(cfg, 'stockos_' + Date.now());
     db = getDatabase(app);
     localStorage.setItem('stockos_fb_config', JSON.stringify(cfg));
-    document.getElementById('configModal').classList.add('hidden');
+    document.getElementById('settingsModal').classList.add('hidden');
     demoMode = false;
     setStatus('connecting');
     subscribeToDate(currentDate);
   } catch(e) {
-    showToast('Firebase error: ' + e.message, 'error');
+    showToast(t('config.firebaseError') + e.message, 'error');
   }
 };
 
 window.loadDemo = function() {
   demoMode = true;
-  document.getElementById('configModal').classList.add('hidden');
+  document.getElementById('settingsModal').classList.add('hidden');
   setStatus('demo');
   items = {};
   const seed = [
@@ -713,7 +1000,7 @@ function subscribeToDate(date) {
     refresh();
   }, err => {
     setStatus('error');
-    showToast('Firebase read error: ' + err.message, 'error');
+    showToast(t('config.readError') + err.message, 'error');
   });
 }
 
@@ -751,8 +1038,8 @@ function renderLowBanner() {
   const zeroItems = Object.values(items).filter(v => v.final <= 0);
   const banner = document.getElementById('lowBanner');
   const parts = [];
-  if (zeroItems.length) parts.push(`${zeroItems.length} item(s) out of stock`);
-  if (lowItems.length)  parts.push(`${lowItems.length} item(s) running low`);
+  if (zeroItems.length) parts.push(`${zeroItems.length} ${t('banner.outOfStock')}`);
+  if (lowItems.length)  parts.push(`${lowItems.length} ${t('banner.runningLow')}`);
   if (parts.length) {
     document.getElementById('lowBannerText').textContent = '⚠ ' + parts.join(' · ');
     banner.classList.add('show');
@@ -779,7 +1066,7 @@ window.renderTable = function() {
 
   const tbody = document.getElementById('tableBody');
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><i class="fa-solid fa-box-open"></i><br>No items found</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><i class="fa-solid fa-box-open"></i><br>${t('table.empty')}</div></td></tr>`;
     return;
   }
 
@@ -787,9 +1074,9 @@ window.renderTable = function() {
     const final = r.final;
     const thr = r.threshold || 0;
     let badge = '', statusClass = '';
-    if (final <= 0)       { badge = 'OUT';  statusClass = 'badge-zero'; }
-    else if (final <= thr){ badge = 'LOW';  statusClass = 'badge-low';  }
-    else                  { badge = 'OK';   statusClass = 'badge-ok';   }
+    if (final <= 0)       { badge = t('badge.out'); statusClass = 'badge-zero'; }
+    else if (final <= thr){ badge = t('badge.low'); statusClass = 'badge-low';  }
+    else                  { badge = t('badge.ok');  statusClass = 'badge-ok';   }
 
     return `<tr>
       <td class="num" style="color:var(--muted)">${i+1}</td>
@@ -804,7 +1091,7 @@ window.renderTable = function() {
       <td><span class="badge ${statusClass}">${badge}</span></td>
       <td>
         <div class="row-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.key}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.key}')">${t('table.edit')}</button>
           <button class="btn btn-danger btn-sm" onclick="deleteItem('${r.key}')">✕</button>
         </div>
       </td>
@@ -821,7 +1108,7 @@ window.sortBy = function(key) {
 // ── ADD / EDIT ─────────────────────────────────────────────────────────
 window.openAddModal = function() {
   editingKey = null;
-  document.getElementById('editModalTitle').textContent = 'Add Item';
+  document.getElementById('editModalTitle').textContent = t('edit.addTitle');
   ['name','sku'].forEach(f => document.getElementById('f-'+f).value = '');
   ['begin','transfer','sold'].forEach(f => document.getElementById('f-'+f).value = 0);
   document.getElementById('f-threshold').value = 20;
@@ -831,7 +1118,7 @@ window.openAddModal = function() {
 window.openEditModal = function(key) {
   editingKey = key;
   const r = items[key];
-  document.getElementById('editModalTitle').textContent = 'Edit Item';
+  document.getElementById('editModalTitle').textContent = t('edit.editTitle');
   document.getElementById('f-name').value      = r.name || '';
   document.getElementById('f-sku').value       = r.sku || '';
   document.getElementById('f-begin').value     = r.begin;
@@ -854,18 +1141,18 @@ window.saveItem = function() {
     sold:      Number(document.getElementById('f-sold').value),
     threshold: Number(document.getElementById('f-threshold').value),
   };
-  if (!data.name) { showToast('Item name is required', 'error'); return; }
+  if (!data.name) { showToast(t('edit.nameRequired'), 'error'); return; }
 
   if (demoMode) {
     const k = editingKey || ('demo_' + Date.now());
     items[k] = computeItem(data);
     closeEditModal();
     refresh();
-    showToast(editingKey ? 'Item updated' : 'Item added');
+    showToast(editingKey ? t('edit.updated') : t('edit.added'));
     return;
   }
 
-  if (!db) { showToast('Not connected to Firebase', 'error'); return; }
+  if (!db) { showToast(t('edit.notConnected'), 'error'); return; }
   const path = 'stock/' + currentDate;
   const p = editingKey
     ? update(ref(db, path + '/' + editingKey), data)
@@ -873,21 +1160,21 @@ window.saveItem = function() {
 
   p.then(() => {
     closeEditModal();
-    showToast(editingKey ? 'Item updated' : 'Item added');
-  }).catch(e => showToast('Save failed: ' + e.message, 'error'));
+    showToast(editingKey ? t('edit.updated') : t('edit.added'));
+  }).catch(e => showToast(t('edit.saveFailed') + e.message, 'error'));
 };
 
 window.deleteItem = function(key) {
-  if (!confirm('Delete this item?')) return;
+  if (!confirm(t('edit.deleteConfirm'))) return;
   if (demoMode) {
     delete items[key];
     refresh();
-    showToast('Item deleted');
+    showToast(t('edit.deleted'));
     return;
   }
   remove(ref(db, 'stock/' + currentDate + '/' + key))
-    .then(() => showToast('Item deleted'))
-    .catch(e => showToast('Delete failed: ' + e.message, 'error'));
+    .then(() => showToast(t('edit.deleted')))
+    .catch(e => showToast(t('edit.deleteFailed') + e.message, 'error'));
 };
 
 // ── DATE CHANGE ────────────────────────────────────────────────────────
@@ -903,8 +1190,8 @@ window.changeDate = function(val) {
 // ── EXPORT CSV ─────────────────────────────────────────────────────────
 window.exportCSV = function() {
   const vals = Object.values(items);
-  if (!vals.length) { showToast('Nothing to export', 'error'); return; }
-  const hdr = ['No','Item','SKU','Beginning','Transfer to Truck','Sold','Warehouse','Truck','Final'];
+  if (!vals.length) { showToast(t('toast.nothingToExport'), 'error'); return; }
+  const hdr = [t('csv.no'),t('csv.item'),t('csv.sku'),t('csv.beginning'),t('csv.transfer'),t('csv.sold'),t('csv.warehouse'),t('csv.truck'),t('csv.final')];
   const rows = vals.map((r,i) =>
     [i+1, r.name, r.sku, r.begin, r.transfer, r.sold, r.warehouse, r.truck, r.final]
       .map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(',')
@@ -914,7 +1201,7 @@ window.exportCSV = function() {
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
   a.download = 'stock_' + currentDate + '.csv';
   a.click();
-  showToast('CSV exported');
+  showToast(t('toast.csvExported'));
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────
@@ -935,17 +1222,22 @@ function fillConfig(c) {
   document.getElementById('cfg-appId').value       = c.appId || '';
 }
 
-window.openConfig = function() {
-  document.getElementById('configModal').classList.remove('hidden');
+window.openSettings = function() {
+  document.getElementById('settingsModal').classList.remove('hidden');
+};
+
+window.closeSettings = function() {
+  document.getElementById('settingsModal').classList.add('hidden');
 };
 
 function setStatus(state) {
+  lastFbState = state;
   const dot = document.getElementById('fbDot');
   const txt = document.getElementById('fbStatusText');
-  if (state === 'connected')   { dot.className='dot connected'; txt.textContent='Firebase connected'; }
-  else if (state === 'error')  { dot.className='dot error';     txt.textContent='Connection error';   }
-  else if (state === 'demo')   { dot.className='dot connected'; txt.textContent='Demo mode';          }
-  else                         { dot.className='dot';           txt.textContent='Connecting…';        }
+  if (state === 'connected')   { dot.className='dot connected'; txt.textContent=t('status.connected'); }
+  else if (state === 'error')  { dot.className='dot error';     txt.textContent=t('status.error');     }
+  else if (state === 'demo')   { dot.className='dot connected'; txt.textContent=t('status.demo');      }
+  else                         { dot.className='dot';           txt.textContent=t('status.connecting');}
 }
 
 function showToast(msg, type) {
@@ -960,9 +1252,15 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+const KM_WEEKDAYS = ['ថ្ងៃអាទិត្យ','ថ្ងៃច័ន្ទ','ថ្ងៃអង្គារ','ថ្ងៃពុធ','ថ្ងៃព្រហស្បតិ៍','ថ្ងៃសុក្រ','ថ្ងៃសៅរ៍'];
+const KM_MONTHS   = ['មករា','កុម្ភៈ','មិនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+
 function formatDate(s) {
   if (!s) return '';
   const d = new Date(s + 'T00:00:00');
+  if (lang === 'km') {
+    return `${KM_WEEKDAYS[d.getDay()]} ទី${d.getDate()} ខែ${KM_MONTHS[d.getMonth()]} ឆ្នាំ${d.getFullYear()}`;
+  }
   return d.toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 }
 </script>
