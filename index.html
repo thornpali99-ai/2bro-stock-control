@@ -95,6 +95,7 @@
     justify-content: center;
   }
   .modal-backdrop.hidden { display: none; }
+  .hidden { display: none !important; }
   .modal {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -340,12 +341,57 @@
   }
   .low-stock-banner.show { display: flex; }
   .low-stock-banner i { color: var(--red); }
+
+  /* ── LOGIN MODAL ── */
+  .login-modal { width: 360px; text-align: center; }
+  .login-modal .login-icon {
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    background: rgba(249,115,22,.12);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 16px;
+  }
+  .login-modal h2 { text-align: center; }
+  .login-modal p { text-align: center; }
+  .login-modal .form-group { text-align: left; }
+  .login-error {
+    color: var(--red);
+    font-size: 12px;
+    font-family: var(--mono);
+    min-height: 16px;
+    margin-top: -4px;
+    margin-bottom: 10px;
+  }
+  .login-modal .btn-primary { width: 100%; padding: 10px 18px; }
 </style>
 </head>
 <body>
 
+<!-- LOGIN MODAL -->
+<div class="modal-backdrop" id="loginModal">
+  <div class="modal login-modal">
+    <div class="login-icon"><i class="fa-solid fa-lock"></i></div>
+    <h2>StockOS Login</h2>
+    <p>Sign in to access the stock control dashboard.</p>
+    <form id="loginForm" onsubmit="return doLogin(event)">
+      <div class="form-group">
+        <label>ID</label>
+        <input type="text" id="login-id" placeholder="Enter ID" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+  </div>
+</div>
+
 <!-- FIREBASE CONFIG MODAL -->
-<div class="modal-backdrop" id="configModal">
+<div class="modal-backdrop hidden" id="configModal">
   <div class="modal">
     <h2>🔥 Firebase Configuration</h2>
     <p>Enter your Firebase project credentials to connect the dashboard.</p>
@@ -416,15 +462,19 @@
   </div>
 </div>
 
+<!-- APP CONTENT (hidden until login) -->
+<div id="appContent" class="hidden">
+
 <!-- HEADER -->
 <header>
-  <div class="logo">2BRO<span>Wholesale</span></div>
+  <div class="logo">STOCK<span>OS</span></div>
   <div class="header-right">
     <div class="firebase-status" id="fbStatus">
       <span class="dot" id="fbDot"></span>
       <span id="fbStatusText">Connecting…</span>
     </div>
     <button class="btn btn-ghost btn-sm" onclick="openConfig()">⚙ Firebase</button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
   </div>
 </header>
 
@@ -509,6 +559,8 @@
 <!-- TOAST -->
 <div id="toast"></div>
 
+</div> <!-- /#appContent -->
+
 <!-- FIREBASE SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -524,12 +576,61 @@ let editingKey = null;
 let currentDate = todayStr();
 let demoMode = false;
 
+// ── AUTH ───────────────────────────────────────────────────────────────
+// Change these to set your own login ID / password.
+const AUTH_ID   = 'admin';
+const AUTH_PASS = 'stockos2026';
+const AUTH_KEY  = 'stockos_logged_in';
+
 function todayStr() {
   return new Date().toISOString().slice(0,10);
 }
 
+// ── AUTH FLOW ──────────────────────────────────────────────────────────
+function checkAuth() {
+  if (localStorage.getItem(AUTH_KEY) === 'true') {
+    showApp();
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginModal').classList.remove('hidden');
+  document.getElementById('appContent').classList.add('hidden');
+}
+
+function showApp() {
+  document.getElementById('loginModal').classList.add('hidden');
+  document.getElementById('appContent').classList.remove('hidden');
+  initApp();
+}
+
+window.doLogin = function(e) {
+  if (e) e.preventDefault();
+  const id = document.getElementById('login-id').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('loginError');
+
+  if (id === AUTH_ID && pass === AUTH_PASS) {
+    localStorage.setItem(AUTH_KEY, 'true');
+    errEl.textContent = '';
+    document.getElementById('login-pass').value = '';
+    showApp();
+  } else {
+    errEl.textContent = 'Invalid ID or password.';
+  }
+  return false;
+};
+
+window.doLogout = function() {
+  if (!confirm('Log out of StockOS?')) return;
+  localStorage.removeItem(AUTH_KEY);
+  location.reload();
+};
+
 // ── INIT ───────────────────────────────────────────────────────────────
-(function init() {
+function initApp() {
   const d = document.getElementById('reportDate');
   d.value = currentDate;
   document.getElementById('dateDisplay').textContent = formatDate(currentDate);
@@ -545,7 +646,9 @@ function todayStr() {
     } catch(e) {}
   }
   document.getElementById('configModal').classList.remove('hidden');
-})();
+}
+
+checkAuth();
 
 // ── FIREBASE ───────────────────────────────────────────────────────────
 window.connectFirebase = function() {
