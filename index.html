@@ -134,6 +134,21 @@
     transition: border-color .2s;
   }
   .form-group input:focus { border-color: var(--accent); }
+  .form-group select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color .2s;
+    margin-bottom: 8px;
+  }
+  .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface); color: var(--text); }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
   .btn {
     padding: 8px 18px;
@@ -429,6 +444,13 @@
     <p>Fill in the stock details for this item.</p>
     <div class="form-group">
       <label>Item Name (Khmer / English)</label>
+      <select id="f-name-select" onchange="onNameSelectChange(this.value)">
+        <option value="">-- ជ្រើសរើសផលិតផល / Select a product --</option>
+      </select>
+      <div style="display:flex; gap:8px; margin-bottom:8px;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openAddProductModal()">➕ ផលិតផលថ្មី / Add new</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="openEditProductModal()">✏️ កែឈ្មោះ / Edit selected</button>
+      </div>
       <input type="text" id="f-name" placeholder="e.g. ខោទឹកនោមស្លៀក UniDry S24">
     </div>
     <div class="form-group">
@@ -458,6 +480,31 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT PRODUCT (NAME LIST) MODAL -->
+<div class="modal-backdrop hidden" id="productModal">
+  <div class="modal">
+    <h2 id="productModalTitle">Add Product</h2>
+    <p>Add or rename a product in the Item Name list. This does not change the name on any stock entries already saved.</p>
+    <div class="form-group">
+      <label>Group / Category</label>
+      <select id="pf-group" onchange="toggleGroupCustom()"></select>
+    </div>
+    <div class="form-group hidden" id="pf-group-custom-wrap">
+      <label>New Group Name</label>
+      <input type="text" id="pf-group-custom" placeholder="e.g. New Brand">
+    </div>
+    <div class="form-group">
+      <label>Product Name (Khmer / English)</label>
+      <input type="text" id="pf-name" placeholder="e.g. ខោទឹកនោមស្លៀក UniDry S24">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm hidden" id="pf-delete-btn" style="margin-right:auto" onclick="deleteProduct()">Delete</button>
+      <button class="btn btn-ghost" onclick="closeProductModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save</button>
     </div>
   </div>
 </div>
@@ -570,11 +617,57 @@ import { getDatabase, ref, set, onValue, remove, push, update }
 // ── STATE ──────────────────────────────────────────────────────────────
 let db = null;
 let items = {};            // { firebaseKey: itemObj }
+let products = {};         // { key: { name, group } } -- powers the Item Name select list
+let editingProductKey = null;
 let sortKey = 'no';
 let sortAsc = true;
 let editingKey = null;
 let currentDate = todayStr();
 let demoMode = false;
+
+// ── DEFAULT PRODUCT LIST (seeded once if no products exist yet) ────────
+const DEFAULT_PRODUCTS = [
+  {group:'UniDry ស្លៀក (តូច)', name:'ខោទឹកនោមស្លៀក UniDry S24'},
+  {group:'UniDry ស្លៀក (តូច)', name:'ខោទឹកនោមស្លៀក UniDry M22'},
+  {group:'UniDry ស្លៀក (តូច)', name:'ខោទឹកនោមស្លៀក UniDry L20'},
+  {group:'UniDry ស្លៀក (តូច)', name:'ខោទឹកនោមស្លៀក UniDry XL18'},
+  {group:'UniDry ស្លៀក (តូច)', name:'ខោទឹកនោមស្លៀក UniDry XXL16'},
+  {group:'UniDry ស្លៀក (ធំ)', name:'ខោទឹកនោមស្លៀក UniDry S66'},
+  {group:'UniDry ស្លៀក (ធំ)', name:'ខោទឹកនោមស្លៀក UniDry M60'},
+  {group:'UniDry ស្លៀក (ធំ)', name:'ខោទឹកនោមស្លៀក UniDry L54'},
+  {group:'UniDry ស្លៀក (ធំ)', name:'ខោទឹកនោមស្លៀក UniDry XL48'},
+  {group:'UniDry ស្លៀក (ធំ)', name:'ខោទឹកនោមស្លៀក UniDry XXL42'},
+  {group:'UniDry Pre.M ស្លៀក', name:'ខោទឹកនោមស្លៀក UniDry Pre.M M60'},
+  {group:'UniDry Pre.M ស្លៀក', name:'ខោទឹកនោមស្លៀក UniDry Pre.M L52'},
+  {group:'UniDry Pre.M ស្លៀក', name:'ខោទឹកនោមស្លៀក UniDry Pre.M XL46'},
+  {group:'UniDry Pre.M ស្លៀក', name:'ខោទឹកនោមស្លៀក UniDry Pre.M XXL40'},
+  {group:'UniDry បកបិត / ទើបកើត', name:'ខោទឹកនោមបកបិត UniDry S30'},
+  {group:'UniDry បកបិត / ទើបកើត', name:'ខោទឹកនោមបកបិត UniDry M26'},
+  {group:'UniDry បកបិត / ទើបកើត', name:'ខោទឹកនោមទើបកើត UniDry'},
+  {group:'UniDry កន្សែងសើម', name:'កន្សែងសើម UniDry 80'},
+  {group:'SunMate (មនុស្សចាស់)', name:'ខោទឹកនោមមនុស្សចាស់បកបិត SunMate M10'},
+  {group:'SunMate (មនុស្សចាស់)', name:'ខោទឹកនោមមនុស្សចាស់បកបិត SunMate L10'},
+  {group:'SunMate (មនុស្សចាស់)', name:'ខោទឹកនោមមនុស្សចាស់ស្លៀក SunMate M9'},
+  {group:'SunMate (មនុស្សចាស់)', name:'ខោទឹកនោមមនុស្សចាស់ស្លៀក SunMate L8'},
+  {group:'Joma', name:'Joma ធំM'},
+  {group:'Joma', name:'Joma ធំL'},
+  {group:'Joma', name:'Joma ធំXL'},
+  {group:'Joma', name:'Joma ធំXXL'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'Nabaty Cake'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'Solite'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'StarCare'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'Best Cows 1,284g'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'Best Cows 380g'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'UHT 1L សាប'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'ADM110'},
+  {group:'Nabaty & ផលិតផលផ្សេងៗ', name:'ADM180ml'},
+];
+
+function defaultProductsObj() {
+  const obj = {};
+  DEFAULT_PRODUCTS.forEach((p, i) => { obj['seed_' + i] = { name: p.name, group: p.group }; });
+  return obj;
+}
 
 // ── AUTH ───────────────────────────────────────────────────────────────
 // Change these to set your own login ID / password.
@@ -665,6 +758,7 @@ window.connectFirebase = function() {
     demoMode = false;
     setStatus('connecting');
     subscribeToDate(currentDate);
+    subscribeProducts();
   } catch(e) {
     showToast('Firebase error: ' + e.message, 'error');
   }
@@ -675,6 +769,16 @@ window.loadDemo = function() {
   document.getElementById('configModal').classList.add('hidden');
   setStatus('demo');
   items = {};
+
+  const savedProducts = localStorage.getItem('stockos_products_demo');
+  if (savedProducts) {
+    try { products = JSON.parse(savedProducts); } catch(e) { products = defaultProductsObj(); }
+  } else {
+    products = defaultProductsObj();
+    localStorage.setItem('stockos_products_demo', JSON.stringify(products));
+  }
+  renderNameOptions();
+
   const seed = [
     {no:1, name:'ខោទឹកនោមស្លៀក UniDry',      sku:'S24',  begin:208, transfer:100, sold:50, threshold:30},
     {no:2, name:'ខោទឹកនោមស្លៀក UniDry',      sku:'M22',  begin:180, transfer:80,  sold:60, threshold:30},
@@ -714,6 +818,21 @@ function subscribeToDate(date) {
   }, err => {
     setStatus('error');
     showToast('Firebase read error: ' + err.message, 'error');
+  });
+}
+
+function subscribeProducts() {
+  if (!db) return;
+  onValue(ref(db, 'products'), snap => {
+    if (snap.exists()) {
+      products = snap.val();
+    } else {
+      products = defaultProductsObj();
+      set(ref(db, 'products'), products).catch(() => {});
+    }
+    renderNameOptions();
+  }, err => {
+    showToast('Product list read error: ' + err.message, 'error');
   });
 }
 
@@ -818,13 +937,55 @@ window.sortBy = function(key) {
   renderTable();
 };
 
-// ── ADD / EDIT ─────────────────────────────────────────────────────────
+// ── ITEM NAME SELECT (powered by products list) ───────────────────────
+function renderNameOptions() {
+  const sel = document.getElementById('f-name-select');
+  if (!sel) return;
+  const prevValue = sel.value;
+
+  const groups = {};
+  const order = [];
+  Object.entries(products).forEach(([key, p]) => {
+    const g = (p && p.group) || 'ផ្សេងៗ';
+    if (!groups[g]) { groups[g] = []; order.push(g); }
+    groups[g].push({ key, name: (p && p.name) || '' });
+  });
+
+  let html = '<option value="">-- ជ្រើសរើសផលិតផល / Select a product --</option>';
+  order.forEach(g => {
+    html += `<optgroup label="${escAttr(g)}">`;
+    groups[g].forEach(item => {
+      html += `<option value="${escAttr(item.key)}">${esc(item.name)}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  html += '<option value="__custom__">+ ផ្សេង / Custom (type below)</option>';
+  sel.innerHTML = html;
+
+  if (Array.from(sel.options).some(o => o.value === prevValue)) {
+    sel.value = prevValue;
+  }
+}
+
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ADD / EDIT ITEM ────────────────────────────────────────────────────
+window.onNameSelectChange = function(key) {
+  if (key === '' || key === '__custom__') return;
+  const p = products[key];
+  if (p) document.getElementById('f-name').value = p.name;
+};
+
 window.openAddModal = function() {
   editingKey = null;
   document.getElementById('editModalTitle').textContent = 'Add Item';
   ['name','sku'].forEach(f => document.getElementById('f-'+f).value = '');
   ['begin','transfer','sold'].forEach(f => document.getElementById('f-'+f).value = 0);
   document.getElementById('f-threshold').value = 20;
+  renderNameOptions();
+  document.getElementById('f-name-select').value = '';
   document.getElementById('editModal').classList.remove('hidden');
 };
 
@@ -838,11 +999,137 @@ window.openEditModal = function(key) {
   document.getElementById('f-transfer').value  = r.transfer;
   document.getElementById('f-sold').value      = r.sold;
   document.getElementById('f-threshold').value = r.threshold || 20;
+  renderNameOptions();
+  const sel = document.getElementById('f-name-select');
+  const matchKey = Object.keys(products).find(k => products[k].name === (r.name || ''));
+  sel.value = matchKey || '';
   document.getElementById('editModal').classList.remove('hidden');
 };
 
 window.closeEditModal = function() {
   document.getElementById('editModal').classList.add('hidden');
+};
+
+// ── ADD / EDIT / DELETE PRODUCT (the Item Name list itself) ───────────
+function populateGroupSelect(currentGroup) {
+  const groupSel = document.getElementById('pf-group');
+  const groups = Array.from(new Set(Object.values(products).map(p => (p && p.group) || 'ផ្សេងៗ')));
+  if (!groups.length) groups.push('ផ្សេងៗ');
+
+  let html = groups.map(g => `<option value="${escAttr(g)}">${esc(g)}</option>`).join('');
+  html += '<option value="__new_group__">+ ក្រុមថ្មី / New group…</option>';
+  groupSel.innerHTML = html;
+
+  document.getElementById('pf-group-custom').value = '';
+  if (currentGroup && groups.includes(currentGroup)) {
+    groupSel.value = currentGroup;
+  } else {
+    groupSel.value = groups.length ? groups[0] : '__new_group__';
+  }
+  toggleGroupCustom();
+}
+
+window.toggleGroupCustom = function() {
+  const v = document.getElementById('pf-group').value;
+  document.getElementById('pf-group-custom-wrap').classList.toggle('hidden', v !== '__new_group__');
+};
+
+window.openAddProductModal = function() {
+  editingProductKey = null;
+  document.getElementById('productModalTitle').textContent = 'Add Product';
+  populateGroupSelect('');
+  document.getElementById('pf-name').value = '';
+  document.getElementById('pf-delete-btn').classList.add('hidden');
+  document.getElementById('productModal').classList.remove('hidden');
+};
+
+window.openEditProductModal = function() {
+  const sel = document.getElementById('f-name-select');
+  const key = sel.value;
+  if (!key || key === '__custom__') {
+    showToast('Select a product from the list first to edit it', 'error');
+    return;
+  }
+  const p = products[key];
+  if (!p) { showToast('Product not found', 'error'); return; }
+  editingProductKey = key;
+  document.getElementById('productModalTitle').textContent = 'Edit Product';
+  populateGroupSelect(p.group || '');
+  document.getElementById('pf-name').value = p.name || '';
+  document.getElementById('pf-delete-btn').classList.remove('hidden');
+  document.getElementById('productModal').classList.remove('hidden');
+};
+
+window.closeProductModal = function() {
+  document.getElementById('productModal').classList.add('hidden');
+};
+
+function addProductRemote(prod) {
+  if (demoMode) {
+    const key = 'p_' + Date.now();
+    products[key] = prod;
+    localStorage.setItem('stockos_products_demo', JSON.stringify(products));
+    return Promise.resolve(key);
+  }
+  if (!db) return Promise.reject(new Error('Not connected to Firebase'));
+  return push(ref(db, 'products'), prod).then(r => r.key);
+}
+
+function updateProductRemote(key, prod) {
+  if (demoMode) {
+    products[key] = prod;
+    localStorage.setItem('stockos_products_demo', JSON.stringify(products));
+    return Promise.resolve(key);
+  }
+  if (!db) return Promise.reject(new Error('Not connected to Firebase'));
+  return update(ref(db, 'products/' + key), prod).then(() => key);
+}
+
+function deleteProductRemote(key) {
+  if (demoMode) {
+    delete products[key];
+    localStorage.setItem('stockos_products_demo', JSON.stringify(products));
+    return Promise.resolve();
+  }
+  if (!db) return Promise.reject(new Error('Not connected to Firebase'));
+  return remove(ref(db, 'products/' + key));
+}
+
+window.saveProduct = function() {
+  const groupSelVal  = document.getElementById('pf-group').value;
+  const customGroup  = document.getElementById('pf-group-custom').value.trim();
+  const group        = groupSelVal === '__new_group__' ? customGroup : groupSelVal;
+  const name         = document.getElementById('pf-name').value.trim();
+
+  if (!name) { showToast('Product name is required', 'error'); return; }
+  if (groupSelVal === '__new_group__' && !customGroup) { showToast('Enter a name for the new group', 'error'); return; }
+
+  const payload = { name, group: group || 'ផ្សេងៗ' };
+  const action = editingProductKey
+    ? updateProductRemote(editingProductKey, payload)
+    : addProductRemote(payload);
+
+  action.then(newKey => {
+    const savedKey = editingProductKey || newKey;
+    const wasEdit = !!editingProductKey;
+    closeProductModal();
+    renderNameOptions();
+    const sel = document.getElementById('f-name-select');
+    sel.value = savedKey;
+    onNameSelectChange(savedKey);
+    showToast(wasEdit ? 'Product updated' : 'Product added');
+  }).catch(e => showToast('Save failed: ' + e.message, 'error'));
+};
+
+window.deleteProduct = function() {
+  if (!editingProductKey) return;
+  if (!confirm('Remove this product from the list? Stock entries already saved will keep their existing name.')) return;
+  deleteProductRemote(editingProductKey).then(() => {
+    closeProductModal();
+    renderNameOptions();
+    document.getElementById('f-name-select').value = '';
+    showToast('Product removed from list');
+  }).catch(e => showToast('Delete failed: ' + e.message, 'error'));
 };
 
 window.saveItem = function() {
